@@ -98,11 +98,26 @@ Provide the response in JSON format with keys: symptoms, medications, metrics, c
             },
           });
 
-          const extractedData = JSON.parse(
-            typeof llmResponse.choices[0]?.message.content === "string"
-              ? llmResponse.choices[0].message.content
-              : "{}"
-          );
+          let extractedData = {
+            symptoms: [],
+            medications: [],
+            metrics: {},
+            conditions: [],
+          };
+          try {
+            const content = llmResponse.choices[0]?.message.content;
+            if (typeof content === "string" && content.trim()) {
+              const parsed = JSON.parse(content);
+              extractedData = {
+                symptoms: Array.isArray(parsed.symptoms) ? parsed.symptoms : [],
+                medications: Array.isArray(parsed.medications) ? parsed.medications : [],
+                metrics: typeof parsed.metrics === "object" ? parsed.metrics : {},
+                conditions: Array.isArray(parsed.conditions) ? parsed.conditions : [],
+              };
+            }
+          } catch (parseError) {
+            console.warn("Failed to parse LLM response:", parseError);
+          }
 
           // Generate risk prediction based on extracted data
           const riskAnalysis = await generateRiskPrediction(extractedData);
@@ -254,11 +269,25 @@ Provide your response in JSON format with:
     },
   });
 
-  const assessment = JSON.parse(
-    typeof response.choices[0]?.message.content === "string"
-      ? response.choices[0].message.content
-      : "{}"
-  );
+  let assessment = {
+    riskLevel: "moderate" as const,
+    confidencePercentage: 50,
+    diagnosticSummary: "Unable to generate assessment.",
+  };
+  try {
+    const content = response.choices[0]?.message.content;
+    if (typeof content === "string" && content.trim()) {
+      const parsed = JSON.parse(content);
+      const validRiskLevels = ["low", "moderate", "high", "very_high"];
+      assessment = {
+        riskLevel: validRiskLevels.includes(parsed.riskLevel) ? parsed.riskLevel : "moderate",
+        confidencePercentage: typeof parsed.confidencePercentage === "number" ? Math.min(100, Math.max(0, parsed.confidencePercentage)) : 50,
+        diagnosticSummary: parsed.diagnosticSummary || "Assessment completed.",
+      };
+    }
+  } catch (parseError) {
+    console.warn("Failed to parse risk assessment:", parseError);
+  }
 
   return {
     riskLevel: assessment.riskLevel || "moderate",
