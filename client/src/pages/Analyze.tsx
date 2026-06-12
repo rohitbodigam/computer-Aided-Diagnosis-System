@@ -11,10 +11,12 @@ import { toast } from "sonner";
 import { FileText, Upload, PlusCircle } from "lucide-react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
+import { useAnalysis } from "@/contexts/AnalysisContext";
 
 export default function Analyze() {
   const { isAuthenticated } = useAuth();
   const [, setLocation] = useLocation();
+  const { setAnalysisData } = useAnalysis();
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
@@ -76,8 +78,9 @@ export default function Analyze() {
             mimeType: uploadedFile.type,
           });
           toast.success("Analysis complete!");
-          // Navigate to results page with data
-          setLocation(`/results?type=upload&data=${JSON.stringify(result)}`);
+          // Store data in context and navigate
+          setAnalysisData(result, "upload");
+          setLocation("/results");
         } catch (error) {
           toast.error("Failed to analyze report");
         }
@@ -114,7 +117,9 @@ export default function Analyze() {
         medicines,
       });
       toast.success("Analysis complete!");
-      setLocation(`/results?type=manual&data=${JSON.stringify(result)}`);
+      // Store data in context and navigate
+      setAnalysisData(result, "manual");
+      setLocation("/results");
     } catch (error) {
       toast.error("Failed to analyze data");
     } finally {

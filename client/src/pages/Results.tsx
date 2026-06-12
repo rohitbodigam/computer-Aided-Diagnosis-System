@@ -1,4 +1,4 @@
-import { useLocation } from "wouter";
+import { useAnalysis } from "@/contexts/AnalysisContext";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -12,24 +12,10 @@ import {
 } from "lucide-react";
 import { Link } from "wouter";
 
-interface RiskAnalysis {
-  riskLevel: "low" | "moderate" | "high" | "very_high";
-  confidencePercentage: number;
-  detectedEntities: {
-    symptoms: string[];
-    medications: string[];
-    metrics: Record<string, unknown>;
-  };
-  diagnosticSummary: string;
-}
-
 export default function Results() {
-  const [location] = useLocation();
-  const params = new URLSearchParams(location.split("?")[1]);
-  const dataStr = params.get("data");
-  const type = params.get("type");
+  const { analysisData, analysisType } = useAnalysis();
 
-  if (!dataStr) {
+  if (!analysisData || !analysisType) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Card className="p-8 text-center max-w-md">
@@ -44,24 +30,7 @@ export default function Results() {
     );
   }
 
-  let analysis: RiskAnalysis;
-  try {
-    const parsed = JSON.parse(dataStr);
-    analysis = parsed.riskAnalysis || parsed;
-  } catch {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Card className="p-8 text-center max-w-md">
-          <p className="text-foreground mb-4">Failed to load analysis data.</p>
-          <Link href="/analyze">
-            <Button className="bg-secondary hover:bg-secondary/90">
-              Back to Analysis
-            </Button>
-          </Link>
-        </Card>
-      </div>
-    );
-  }
+  const analysis = analysisData.riskAnalysis;
 
   const getRiskIcon = () => {
     switch (analysis.riskLevel) {
@@ -112,7 +81,7 @@ export default function Results() {
               Analysis Results
             </h1>
             <p className="text-muted-foreground">
-              {type === "upload"
+              {analysisType === "upload"
                 ? "Medical Report Analysis"
                 : "Manual Data Analysis"}
             </p>
