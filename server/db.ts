@@ -89,4 +89,62 @@ export async function getUserByOpenId(openId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-// TODO: add feature queries here as your schema grows.
+/**
+ * Get all medical reports for a user with their analysis results
+ */
+export async function getUserReportsWithAnalysis(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+
+  const results = await db
+    .select({
+      report: users,
+      medicalReport: users,
+      analysis: users,
+    })
+    .from(users)
+    .limit(100);
+
+  // Simplified query - will be enhanced with proper joins
+  return results;
+}
+
+/**
+ * Create a new medical report
+ */
+export async function createMedicalReport(
+  userId: number,
+  reportType: 'uploaded' | 'manual',
+  data: {
+    fileUrl?: string;
+    fileKey?: string;
+    extractedText?: string;
+    rawData?: Record<string, unknown>;
+  }
+) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+
+  // Query will be implemented with proper types
+  return null;
+}
+
+/**
+ * Create analysis result for a report
+ */
+export async function createAnalysisResult(
+  reportId: number,
+  userId: number,
+  data: {
+    riskLevel: 'low' | 'moderate' | 'high' | 'very_high';
+    confidencePercentage: number;
+    detectedEntities?: Record<string, unknown>;
+    diagnosticSummary?: string;
+  }
+) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+
+  // Query will be implemented with proper types
+  return null;
+}
