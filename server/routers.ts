@@ -188,7 +188,7 @@ Provide the response in JSON format with keys: symptoms, medications, metrics, c
 });
 
 /**
- * Generate disease risk prediction and diagnostic summary using LLM
+ * Generate cardiovascular complication risk prediction with realistic confidence
  */
 async function generateRiskPrediction(medicalData: {
   bloodGlucose?: number;
@@ -206,10 +206,49 @@ async function generateRiskPrediction(medicalData: {
     symptoms: string[];
     medications: string[];
     metrics: Record<string, unknown>;
+    inferredIndicators?: string[];
   };
   diagnosticSummary: string;
 }> {
-  const prompt = `You are a medical AI assistant. Based on the following patient data, provide a disease risk assessment:
+  // Build inferred clinical indicators from conditions and symptoms
+  const inferredIndicators: string[] = [];
+  if (medicalData.conditions && medicalData.conditions.length > 0) {
+    inferredIndicators.push(...medicalData.conditions);
+  }
+  if (medicalData.symptoms && medicalData.symptoms.length > 0) {
+    medicalData.symptoms.forEach(symptom => {
+      if (!inferredIndicators.includes(symptom)) {
+        inferredIndicators.push(symptom);
+      }
+    });
+  }
+
+  // Calculate realistic confidence based on available data
+  let baseConfidence = 50;
+  let hasStrongMetrics = false;
+
+  // Award points for available data
+  if (medicalData.bloodGlucose || medicalData.hba1c) baseConfidence += 12;
+  if (medicalData.age && medicalData.bmi) baseConfidence += 8;
+  if (medicalData.conditions && medicalData.conditions.length > 0) baseConfidence += 15;
+  if (medicalData.symptoms && medicalData.symptoms.length > 0) baseConfidence += 10;
+
+  // Check for strong metrics (glucose + HbA1c + additional vitals)
+  const hasGlucoseData = medicalData.bloodGlucose !== undefined && medicalData.hba1c !== undefined;
+  const hasAdditionalMetrics = medicalData.metrics && Object.keys(medicalData.metrics).length > 1;
+
+  if (hasGlucoseData && hasAdditionalMetrics) {
+    hasStrongMetrics = true;
+    baseConfidence = Math.min(85, baseConfidence + 10);
+  } else if (hasGlucoseData) {
+    baseConfidence = Math.min(82, baseConfidence + 5);
+  } else {
+    // Cap confidence at 78% if missing critical metrics like glucose/HbA1c
+    baseConfidence = Math.min(78, baseConfidence);
+  }
+
+  const prompt = `You are a medical AI assistant providing cardiovascular complication risk assessment. 
+Based on the following patient data, assess the risk of cardiovascular complications.
 
 Patient Data:
 - Blood Glucose: ${medicalData.bloodGlucose || "Not provided"} mg/dL
@@ -221,21 +260,29 @@ Patient Data:
 - Other Metrics: ${JSON.stringify(medicalData.metrics || {})}
 - Known Conditions: ${(medicalData.conditions || []).join(", ") || "None reported"}
 
+IMPORTANT GUIDELINES:
+- Use simple, direct clinical language. Avoid complex medical jargon.
+- If metrics are missing, base assessment on known conditions and symptoms.
+- Confidence should reflect data completeness. Maximum for this case: ${baseConfidence}%
+- Do not exceed ${baseConfidence}% confidence.
+- Summary should be 2-3 sentences, referencing specific conditions or symptoms.
+- Avoid phrases like "inherently place them at" or "adverse cardiovascular events". Use simpler language.
+
 Provide your response in JSON format with:
 1. riskLevel: "low", "moderate", "high", or "very_high"
-2. confidencePercentage: 0-100
-3. diagnosticSummary: A detailed clinical assessment (2-3 sentences)`;
+2. confidencePercentage: ${Math.min(baseConfidence, 85)} (do not exceed this value)
+3. diagnosticSummary: A clinical assessment referencing specific conditions or symptoms`;
 
   const response = await invokeLLM({
     messages: [
       {
         role: "system",
         content:
-          "You are a medical AI assistant providing clinical decision support. Always provide balanced, evidence-based assessments.",
+          "You are a medical AI assistant providing clinical decision support. Be conservative with confidence scores. Provide evidence-based, simplified assessments.",
       },
       {
         role: "user",
-        content: prompt as string,
+        content: prompt,
       },
     ],
     response_format: {
@@ -249,7 +296,7 @@ Provide your response in JSON format with:
             riskLevel: {
               type: "string",
               enum: ["low", "moderate", "high", "very_high"],
-              description: "Overall disease risk level",
+              description: "Cardiovascular complication risk level",
             },
             confidencePercentage: {
               type: "number",
@@ -271,17 +318,25 @@ Provide your response in JSON format with:
 
   let assessment = {
     riskLevel: "moderate" as const,
-    confidencePercentage: 50,
+    confidencePercentage: baseConfidence,
     diagnosticSummary: "Unable to generate assessment.",
   };
+
   try {
     const content = response.choices[0]?.message.content;
     if (typeof content === "string" && content.trim()) {
       const parsed = JSON.parse(content);
       const validRiskLevels = ["low", "moderate", "high", "very_high"];
+
+      // Enforce confidence cap
+      const llmConfidence = Math.min(
+        baseConfidence,
+        Math.max(0, parsed.confidencePercentage || baseConfidence)
+      );
+
       assessment = {
         riskLevel: validRiskLevels.includes(parsed.riskLevel) ? parsed.riskLevel : "moderate",
-        confidencePercentage: typeof parsed.confidencePercentage === "number" ? Math.min(100, Math.max(0, parsed.confidencePercentage)) : 50,
+        confidencePercentage: llmConfidence,
         diagnosticSummary: parsed.diagnosticSummary || "Assessment completed.",
       };
     }
@@ -291,7 +346,7 @@ Provide your response in JSON format with:
 
   return {
     riskLevel: assessment.riskLevel || "moderate",
-    confidencePercentage: assessment.confidencePercentage || 50,
+    confidencePercentage: assessment.confidencePercentage || baseConfidence,
     detectedEntities: {
       symptoms: medicalData.symptoms || [],
       medications: medicalData.medications || [],
@@ -302,6 +357,7 @@ Provide your response in JSON format with:
         bmi: medicalData.bmi,
         ...medicalData.metrics,
       },
+      inferredIndicators: inferredIndicators.length > 0 ? inferredIndicators : undefined,
     },
     diagnosticSummary:
       assessment.diagnosticSummary ||

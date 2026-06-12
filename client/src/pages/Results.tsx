@@ -94,13 +94,23 @@ export default function Results() {
           </Link>
         </div>
 
+        {/* Predicted Condition */}
+        <Card className="p-6 mb-8 border border-secondary/30 bg-secondary/5">
+          <h3 className="text-sm font-semibold text-muted-foreground mb-2">
+            PREDICTED CONDITION
+          </h3>
+          <p className="text-2xl font-bold text-foreground">
+            Cardiovascular Complication Risk
+          </p>
+        </Card>
+
         {/* Risk Level Card */}
         <Card className={`p-8 mb-8 border-2 ${getRiskColor()}`}>
           <div className="flex items-center gap-6 mb-6">
             {getRiskIcon()}
             <div className="flex-1">
               <h2 className="text-3xl font-bold text-foreground mb-2">
-                Disease Risk Assessment
+                Risk Assessment
               </h2>
               <div className="flex items-center gap-3">
                 <Badge variant={getRiskBadgeVariant()} className="text-base">
@@ -127,44 +137,59 @@ export default function Results() {
               ></div>
             </div>
             <p className="text-sm text-muted-foreground mt-2">
-              Based on clinical data analysis
+              Based on available clinical data
             </p>
           </div>
         </Card>
 
         <div className="grid md:grid-cols-2 gap-8 mb-8">
-          {/* Detected Entities */}
+          {/* Clinical Indicators */}
           <Card className="p-6 border border-border/50">
             <h3 className="text-lg font-semibold text-foreground mb-4">
-              Detected Entities
+              Clinical Indicators
             </h3>
 
+            {/* Inferred Indicators */}
+            {analysis.detectedEntities.inferredIndicators &&
+            analysis.detectedEntities.inferredIndicators.length > 0 ? (
+              <div className="mb-6">
+                <h4 className="text-sm font-medium text-muted-foreground mb-3">
+                  Detected Conditions & Symptoms
+                </h4>
+                <div className="flex flex-wrap gap-2">
+                  {analysis.detectedEntities.inferredIndicators.map(
+                    (indicator, idx) => (
+                      <Badge key={idx} variant="secondary">
+                        {indicator}
+                      </Badge>
+                    )
+                  )}
+                </div>
+              </div>
+            ) : null}
+
             {/* Symptoms */}
-            <div className="mb-6">
-              <h4 className="text-sm font-medium text-muted-foreground mb-3">
-                Symptoms
-              </h4>
-              {analysis.detectedEntities.symptoms.length > 0 ? (
+            {analysis.detectedEntities.symptoms.length > 0 && (
+              <div className="mb-6">
+                <h4 className="text-sm font-medium text-muted-foreground mb-3">
+                  Reported Symptoms
+                </h4>
                 <div className="flex flex-wrap gap-2">
                   {analysis.detectedEntities.symptoms.map((symptom, idx) => (
-                    <Badge key={idx} variant="secondary">
+                    <Badge key={idx} variant="outline">
                       {symptom}
                     </Badge>
                   ))}
                 </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  No symptoms detected
-                </p>
-              )}
-            </div>
+              </div>
+            )}
 
             {/* Medications */}
-            <div>
-              <h4 className="text-sm font-medium text-muted-foreground mb-3">
-                Medications
-              </h4>
-              {analysis.detectedEntities.medications.length > 0 ? (
+            {analysis.detectedEntities.medications.length > 0 && (
+              <div>
+                <h4 className="text-sm font-medium text-muted-foreground mb-3">
+                  Current Medications
+                </h4>
                 <div className="flex flex-wrap gap-2">
                   {analysis.detectedEntities.medications.map((med, idx) => (
                     <Badge key={idx} variant="outline">
@@ -172,12 +197,16 @@ export default function Results() {
                     </Badge>
                   ))}
                 </div>
-              ) : (
+              </div>
+            )}
+
+            {!analysis.detectedEntities.inferredIndicators &&
+              analysis.detectedEntities.symptoms.length === 0 &&
+              analysis.detectedEntities.medications.length === 0 && (
                 <p className="text-sm text-muted-foreground">
-                  No medications detected
+                  No clinical indicators detected
                 </p>
               )}
-            </div>
           </Card>
 
           {/* Clinical Metrics */}
@@ -215,7 +244,7 @@ export default function Results() {
         {/* Diagnostic Summary */}
         <Card className="p-8 border border-secondary/20 bg-secondary/5 mb-8">
           <h3 className="text-lg font-semibold text-foreground mb-4">
-            Diagnostic Summary
+            Clinical Assessment
           </h3>
           <p className="text-foreground leading-relaxed text-base">
             {analysis.diagnosticSummary}

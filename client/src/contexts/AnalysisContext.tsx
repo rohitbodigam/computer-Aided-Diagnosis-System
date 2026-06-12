@@ -21,7 +21,14 @@ interface AnalysisData {
     metrics: Record<string, unknown>;
     conditions: string[];
   };
-  riskAnalysis: RiskAnalysis;
+  riskAnalysis: RiskAnalysis & {
+    detectedEntities: {
+      symptoms: string[];
+      medications: string[];
+      metrics: Record<string, unknown>;
+      inferredIndicators?: string[];
+    };
+  };
 }
 
 interface AnalysisContextType {
