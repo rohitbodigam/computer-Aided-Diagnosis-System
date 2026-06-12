@@ -24,6 +24,6 @@
 - [x] S3 storage configuration and helpers
 
 ## Testing & Deployment
-- [ ] Vitest unit tests for core procedures
-- [ ] End-to-end testing of analysis flow
+- [x] Vitest unit tests for core procedures
+- [x] End-to-end testing of analysis flow
 - [x] Final checkpoint and deployment
